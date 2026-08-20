@@ -104,6 +104,39 @@
             <div id="standings-content"></div>
         </div>
 
+        <!-- PAGE 3: STATS -->
+        <div id="page-stats" class="page-section hidden">
+            <div class="space-y-4">
+                <!-- Stats Category Selector Dropdown -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-3 shadow-lg">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5 px-1">Select Stat Category</label>
+                    <select id="stats-category-selector" onchange="loadLeaderboard(this.value)" class="w-full bg-zinc-950 border border-zinc-800 text-xs font-bold text-cyan-400 rounded-xl px-3 py-2.5 outline-none focus:border-cyan-500 cursor-pointer appearance-none">
+                        <optgroup label="Player Leaders">
+                            <option value="passingYards">Passing Yards</option>
+                            <option value="rushingYards">Rushing Yards</option>
+                            <option value="receivingYards">Receiving Yards</option>
+                            <option value="passingTouchdowns">Passing Touchdowns</option>
+                            <option value="rushingTouchdowns">Rushing Touchdowns</option>
+                            <option value="interceptions">Interceptions Thrown</option>
+                            <option value="sacks">Sacks Leader</option>
+                            <option value="tackles">Total Tackles</option>
+                        </optgroup>
+                        <optgroup label="Team Statistics">
+                            <option value="teamTotalOffense">Team Total Offense (Yards/G)</option>
+                            <option value="teamPassingOffense">Team Passing Offense (Yards/G)</option>
+                            <option value="teamRushingOffense">Team Rushing Offense (Yards/G)</option>
+                            <option value="teamPointsPerGame">Team Points Per Game</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Leaderboard Results Container -->
+                <div id="stats-leaderboard-container">
+                    <div class="text-center py-16 text-cyan-500/70 animate-pulse text-xs uppercase tracking-widest font-medium">Loading Leaderboard...</div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Bottom App Shell Navigation Bar -->
@@ -115,6 +148,10 @@
         <button onclick="switchPage('standings')" id="tab-standings" class="nav-tab flex flex-col items-center gap-1 py-1 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">
             <span class="text-lg leading-none">📊</span>
             <span class="text-[10px] font-black tracking-widest uppercase">Standings</span>
+        </button>
+        <button onclick="switchPage('stats')" id="tab-stats" class="nav-tab flex flex-col items-center gap-1 py-1 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">
+            <span class="text-lg leading-none">📈</span>
+            <span class="text-[10px] font-black tracking-widest uppercase">Stats</span>
         </button>
     </nav>
 
@@ -169,7 +206,6 @@
         function switchPage(pageId) {
             currentPage = pageId;
             
-            // 1. Update Navigation Tabs UI
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.remove('text-cyan-400');
                 tab.classList.add('text-zinc-500');
@@ -180,15 +216,130 @@
                 activeTab.classList.add('text-cyan-400');
             }
 
-            // 2. Hide all pages, show target page
             document.querySelectorAll('.page-section').forEach(page => {
                 page.classList.add('hidden');
             });
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
 
-            // 3. Trigger Data Loads
             if (pageId === 'scores' && cachedEvents.length === 0) fetchScoresForSelected();
             if (pageId === 'standings') loadStandings();
+            if (pageId === 'stats') {
+                const catSelector = document.getElementById('stats-category-selector');
+                loadLeaderboard(catSelector ? catSelector.value : 'passingYards');
+            }
+        }
+
+        // ==========================================
+        // LEAGUE LEADERS & STATS ENGINE
+        // ==========================================
+        async function loadLeaderboard(category) {
+            const container = document.getElementById('stats-leaderboard-container');
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-cyan-500/70 animate-pulse">
+                    <svg class="w-8 h-8 animate-spin mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="font-medium tracking-widest text-[11px] uppercase">Fetching Top 15...</p>
+                </div>`;
+
+            try {
+                let targetUrl = 'https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders';
+                const params = new URLSearchParams();
+                let activeSeasonType = selectedSeasonType || currentActiveSeasonType || '2';
+                params.append('seasontype', activeSeasonType);
+                if (selectedWeek) params.append('week', selectedWeek);
+                targetUrl += `?${params.toString()}`;
+
+                const statsData = await fetchSafe(targetUrl);
+                
+                let leaders = [];
+                let isTeamStat = category.startsWith('team');
+
+                const categories = statsData.categories || statsData.leagues?.[0]?.leaders || [];
+                
+                if (categories.length > 0) {
+                    let matchedGroup = categories.find(g => {
+                        const gName = (g.name || g.displayName || '').toLowerCase();
+                        const gAbbr = (g.abbreviation || '').toLowerCase();
+                        if (isTeamStat) {
+                            return gName.includes('team') || gName.includes('offense');
+                        } else {
+                            return gName.includes(category.toLowerCase()) || gAbbr === category.toLowerCase();
+                        }
+                    });
+
+                    if (!matchedGroup && categories.length > 0) {
+                        matchedGroup = categories[0];
+                    }
+
+                    if (matchedGroup && matchedGroup.leaders) {
+                        leaders = matchedGroup.leaders.slice(0, 15);
+                    }
+                }
+
+                if (leaders.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 text-center space-y-3">
+                            <span class="text-3xl">📊</span>
+                            <h4 class="text-xs font-black uppercase tracking-widest text-zinc-300">Statistics Populating Soon</h4>
+                            <p class="text-[11px] text-zinc-500 leading-relaxed">Top 15 leaderboards will populate as games are played in this timeframe.</p>
+                        </div>`;
+                    return;
+                }
+
+                let html = `
+                    <div class="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-3 sm:p-5 shadow-inner">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                <thead>
+                                    <tr class="text-zinc-600 text-[9px] uppercase tracking-widest bg-zinc-950/40">
+                                        <th class="py-2.5 px-3 font-bold w-full rounded-l">Rank & Name</th>
+                                        <th class="py-2.5 px-3 font-bold text-center rounded-r">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-zinc-800/30">
+                `;
+
+                leaders.forEach((item, idx) => {
+                    const rank = idx + 1;
+                    const athlete = item.athlete || {};
+                    const team = item.team || {};
+                    const displayName = athlete.displayName || team.displayName || 'Unknown';
+                    const headshot = athlete.headshot?.href || team.logo || '';
+                    const teamAbbr = team.abbreviation || '';
+                    const statVal = item.displayValue || item.value || '0';
+
+                    html += `
+                        <tr class="hover:bg-zinc-800/40 transition-colors group">
+                            <td class="py-2.5 px-3 flex items-center">
+                                <span class="w-5 text-zinc-500 font-mono font-bold text-xs mr-2">${rank}</span>
+                                <div class="w-7 h-7 rounded-full bg-zinc-950 p-0.5 border border-zinc-700/50 flex items-center justify-center shrink-0 mr-3 overflow-hidden shadow-inner">
+                                    <img src="${headshot}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                                </div>
+                                <div class="truncate">
+                                    <div class="font-bold text-xs text-zinc-200 group-hover:text-cyan-400 transition-colors truncate">${displayName}</div>
+                                    <div class="text-[9px] text-zinc-500 font-mono uppercase">${teamAbbr}</div>
+                                </div>
+                            </td>
+                            <td class="py-2.5 px-3 text-center text-cyan-400 font-mono font-black text-xs">${statVal}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error("Leaderboard load failed:", err);
+                container.innerHTML = `
+                    <div class="text-center py-16 bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800">
+                        <span class="text-3xl mb-2">⚠️</span>
+                        <p class="text-xs font-black text-red-400 uppercase tracking-wider">Failed to load statistics</p>
+                    </div>`;
+            }
         }
 
         // ==========================================
@@ -307,7 +458,11 @@
                                     <th class="py-2 px-2 font-bold text-center">W</th>
                                     <th class="py-2 px-2 font-bold text-center">L</th>
                                     <th class="py-2 px-2 font-bold text-center">T</th>
-                                    <th class="py-2 px-2 font-bold text-center rounded-r">PCT</th>
+                                    <th class="py-2 px-2 font-bold text-center">PCT</th>
+                                    <th class="py-2 px-2 font-bold text-center">GB</th>
+                                    <th class="py-2 px-2 font-bold text-center">PF</th>
+                                    <th class="py-2 px-2 font-bold text-center">PA</th>
+                                    <th class="py-2 px-2 font-bold text-center rounded-r">DIFF</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-zinc-800/30">
@@ -323,7 +478,11 @@
                         'W': ['wins', 'w', 'win'],
                         'L': ['losses', 'l', 'loss'],
                         'T': ['ties', 't', 'tie'],
-                        'PCT': ['winpercent', 'pct', 'percentage']
+                        'PCT': ['winpercent', 'pct', 'percentage'],
+                        'GB': ['gamesbehind', 'gb'],
+                        'PF': ['pointsfor', 'pf', 'points for'],
+                        'PA': ['pointsagainst', 'pa', 'points against'],
+                        'DIFF': ['pointdifferential', 'diff', 'point differential', 'netpts']
                     };
                     const targets = statMapping[abbr] || [abbr.toLowerCase()];
                     const stat = stats.find(s => {
@@ -336,6 +495,7 @@
                         if (stat.displayValue !== undefined && stat.displayValue !== null) return stat.displayValue;
                         if (stat.value !== undefined && stat.value !== null) {
                             if (abbr === 'PCT' && !isNaN(stat.value)) return stat.value.toFixed(3).replace(/^0/, '');
+                            if (abbr === 'DIFF' && stat.value > 0) return `+${stat.value}`;
                             return stat.value.toString();
                         }
                     }
@@ -368,6 +528,10 @@
                         <td class="py-2 px-2 text-center text-zinc-300 font-mono text-xs">${getStat('L')}</td>
                         <td class="py-2 px-2 text-center text-zinc-500 font-mono text-xs">${getStat('T')}</td>
                         <td class="py-2 px-2 text-center text-cyan-400 font-mono text-xs font-medium">${getStat('PCT')}</td>
+                        <td class="py-2 px-2 text-center text-zinc-400 font-mono text-xs">${getStat('GB')}</td>
+                        <td class="py-2 px-2 text-center text-zinc-300 font-mono text-xs">${getStat('PF')}</td>
+                        <td class="py-2 px-2 text-center text-zinc-300 font-mono text-xs">${getStat('PA')}</td>
+                        <td class="py-2 px-2 text-center text-zinc-300 font-mono text-xs font-semibold">${getStat('DIFF')}</td>
                     </tr>
                 `;
             });
@@ -590,6 +754,11 @@
             }
         }
 
+        function isFavoriteTeamMatch(teamName, favTeam) {
+            if (!favTeam || !teamName) return false;
+            return teamName === favTeam || teamName.includes(favTeam) || favTeam.includes(teamName);
+        }
+
         function isFavoriteGame(game, favTeam) {
             if (!favTeam) return false;
             const comp = game.competitions[0];
@@ -597,7 +766,7 @@
             const away = comp.competitors.find(t => t.homeAway === 'away');
             const homeNames = [home.team.displayName, home.team.name, home.team.shortDisplayName].filter(Boolean);
             const awayNames = [away.team.displayName, away.team.name, away.team.shortDisplayName].filter(Boolean);
-            return homeNames.includes(favTeam) || awayNames.includes(favTeam);
+            return homeNames.some(n => isFavoriteTeamMatch(n, favTeam)) || awayNames.some(n => isFavoriteTeamMatch(n, favTeam));
         }
 
         function getRecordSummary(competitor) {
@@ -608,8 +777,7 @@
 
         async function renderScoreboard() {
             const container = document.getElementById('scoreboard');
-            let heroHTML = '';
-            let standardHTML = '';
+            let scoreboardHTML = '';
 
             if (cachedEvents.length > 0) {
                 const sortedEvents = [...cachedEvents].sort((a, b) => {
@@ -644,112 +812,64 @@
                     const timeString = gameDateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
                     const dateTimeDisplay = statusState === 'pre' ? `${dateString} • ${timeString}` : timeString;
 
-                    const isFav = isFavoriteGame(game, favoriteTeam);
+                    const awayIsFav = isFavoriteTeamMatch(away.team.displayName, favoriteTeam) || isFavoriteTeamMatch(away.team.name, favoriteTeam) || isFavoriteTeamMatch(away.team.shortDisplayName, favoriteTeam);
+                    const homeIsFav = isFavoriteTeamMatch(home.team.displayName, favoriteTeam) || isFavoriteTeamMatch(home.team.name, favoriteTeam) || isFavoriteTeamMatch(home.team.shortDisplayName, favoriteTeam);
 
                     let statusBadgeColor = 'text-zinc-400 bg-zinc-900 border-zinc-800';
                     if (statusState === 'in') statusBadgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 animate-pulse';
                     if (statusState === 'pre') statusBadgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
 
-                    if (isFav) {
-                        heroHTML += `
-                            <div onclick="openGamecast('${game.id}')" class="border border-indigo-500/50 bg-gradient-to-br from-indigo-950/40 via-zinc-900/90 to-zinc-950 p-4 rounded-2xl shadow-xl hover:border-indigo-400 transition-all cursor-pointer relative overflow-hidden group mb-1">
-                                <div class="absolute top-0 right-0 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow">
-                                    ⭐ Favorite
-                                </div>
-                                
-                                <div class="flex justify-between items-center mb-3 pr-16">
-                                    <span class="text-[10px] tracking-wider uppercase font-black px-2.5 py-0.5 rounded-full border ${statusBadgeColor}">${statusDesc}</span>
+                    scoreboardHTML += `
+                        <div onclick="openGamecast('${game.id}')" class="p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between border border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-800/80 shadow-md">
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="text-[9px] tracking-wider uppercase font-black px-2 py-0.5 rounded-full border ${statusBadgeColor}">${statusDesc}</span>
                                     <span class="text-[11px] text-zinc-400 font-medium">${dateTimeDisplay}</span>
                                 </div>
 
                                 <div class="space-y-2.5">
-                                    <div class="flex justify-between items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
-                                        <div class="flex items-center gap-3 overflow-hidden pr-2">
-                                            <div class="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center p-1.5 border border-zinc-700/50 shrink-0">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
+                                            <div class="w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center p-1 border border-zinc-800 shrink-0">
                                                 <img src="${away.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
                                             </div>
-                                            <div class="truncate">
-                                                <div class="font-bold text-sm text-zinc-100 group-hover:text-cyan-400 transition-colors truncate">${away.team.shortDisplayName || away.team.name}</div>
-                                                <div class="text-[10px] text-zinc-500 font-mono">${awayRecord || '0-0'}</div>
+                                            <div class="truncate flex items-center gap-1.5">
+                                                <span class="font-bold text-xs text-zinc-100">${away.team.shortDisplayName || away.team.name}</span>
+                                                ${awayIsFav ? '<span class="text-amber-400 text-xs drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">★</span>' : ''}
+                                                ${awayRecordBadge}
                                             </div>
                                         </div>
-                                        <span class="text-3xl font-black text-white font-mono tracking-tight">${away.score || '0'}</span>
+                                        <span class="text-xl font-black text-white font-mono">${away.score || '0'}</span>
                                     </div>
-
-                                    <div class="flex justify-between items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
-                                        <div class="flex items-center gap-3 overflow-hidden pr-2">
-                                            <div class="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center p-1.5 border border-zinc-700/50 shrink-0">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
+                                            <div class="w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center p-1 border border-zinc-800 shrink-0">
                                                 <img src="${home.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
                                             </div>
-                                            <div class="truncate">
-                                                <div class="font-bold text-sm text-zinc-100 group-hover:text-cyan-400 transition-colors truncate">${home.team.shortDisplayName || home.team.name}</div>
-                                                <div class="text-[10px] text-zinc-500 font-mono">${homeRecord || '0-0'}</div>
+                                            <div class="truncate flex items-center gap-1.5">
+                                                <span class="font-bold text-xs text-zinc-100">${home.team.shortDisplayName || home.team.name}</span>
+                                                ${homeIsFav ? '<span class="text-amber-400 text-xs drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]">★</span>' : ''}
+                                                ${homeRecordBadge}
                                             </div>
                                         </div>
-                                        <span class="text-3xl font-black text-white font-mono tracking-tight">${home.score || '0'}</span>
+                                        <span class="text-xl font-black text-white font-mono">${home.score || '0'}</span>
                                     </div>
-                                </div>
-
-                                <div class="border-t border-zinc-800/60 pt-3 mt-3 flex justify-between items-center text-[11px] text-zinc-500">
-                                    <div class="flex items-center gap-1.5 truncate pr-2">
-                                        <span>📍</span>
-                                        <span class="truncate">${venueFullString}</span>
-                                    </div>
-                                    <span class="text-cyan-400 font-bold uppercase tracking-wider shrink-0">Stats →</span>
                                 </div>
                             </div>
-                        `;
-                    } else {
-                        standardHTML += `
-                            <div onclick="openGamecast('${game.id}')" class="p-3.5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between border border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-800/80 shadow-md">
-                                <div>
-                                    <div class="flex justify-between items-center mb-3">
-                                        <span class="text-[9px] tracking-wider uppercase font-black px-2 py-0.5 rounded-full border ${statusBadgeColor}">${statusDesc}</span>
-                                        <span class="text-[11px] text-zinc-400 font-medium">${dateTimeDisplay}</span>
-                                    </div>
 
-                                    <div class="space-y-2.5">
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
-                                                <div class="w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center p-1 border border-zinc-800 shrink-0">
-                                                    <img src="${away.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
-                                                </div>
-                                                <div class="truncate">
-                                                    <span class="font-bold text-xs text-zinc-100">${away.team.shortDisplayName || away.team.name}</span>
-                                                    ${awayRecordBadge}
-                                                </div>
-                                            </div>
-                                            <span class="text-xl font-black text-white font-mono">${away.score || '0'}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <div class="flex items-center space-x-2.5 overflow-hidden pr-2">
-                                                <div class="w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center p-1 border border-zinc-800 shrink-0">
-                                                    <img src="${home.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
-                                                </div>
-                                                <div class="truncate">
-                                                    <span class="font-bold text-xs text-zinc-100">${home.team.shortDisplayName || home.team.name}</span>
-                                                    ${homeRecordBadge}
-                                                </div>
-                                            </div>
-                                            <span class="text-xl font-black text-white font-mono">${home.score || '0'}</span>
-                                        </div>
-                                    </div>
+                            <div class="border-t border-zinc-800/60 pt-2.5 mt-3 flex justify-between items-center text-[10px] text-zinc-500">
+                                <div class="flex items-center gap-1 truncate pr-2">
+                                    <span>📍</span>
+                                    <span class="truncate">${venueFullString}</span>
                                 </div>
-
-                                <div class="border-t border-zinc-800/60 pt-2.5 mt-3 flex justify-between items-center text-[10px] text-zinc-500">
-                                    <div class="flex items-center gap-1 truncate pr-2">
-                                        <span>📍</span>
-                                        <span class="truncate">${venueFullString}</span>
-                                    </div>
-                                    <span class="text-cyan-400 font-bold uppercase tracking-wider shrink-0">Stats →</span>
-                                </div>
+                                <span class="text-cyan-400 font-bold uppercase tracking-wider shrink-0">Stats →</span>
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
                 });
             }
 
-            if (cachedEvents.length === 0 && !heroHTML) {
+            if (cachedEvents.length === 0) {
                 container.innerHTML = `
                     <div class="col-span-full flex flex-col items-center py-16 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                         <span class="text-2xl mb-2">🏈</span>
@@ -758,7 +878,7 @@
                 return;
             }
 
-            container.innerHTML = heroHTML + standardHTML;
+            container.innerHTML = scoreboardHTML;
         }
 
         async function openGamecast(gameId) {
@@ -806,10 +926,23 @@
             }
         }
 
-        function generateComparisonBar(label, awayVal, homeVal, awayDisplay, homeDisplay, awayColor, homeColor) {
+        function generateComparisonBar(label, awayVal, homeVal, awayDisplay, homeDisplay, awayColor, homeColor, isLowerBetter, awayRank, homeRank) {
             let total = awayVal + homeVal;
-            let awayPct = total > 0 ? (awayVal / total) * 100 : 50;
-            let homePct = total > 0 ? (homeVal / total) * 100 : 50;
+            let awayPct = 50;
+            let homePct = 50;
+
+            if (isLowerBetter) {
+                if (total > 0) {
+                    awayPct = (homeVal / total) * 100;
+                    homePct = (awayVal / total) * 100;
+                }
+            } else {
+                awayPct = total > 0 ? (awayVal / total) * 100 : 50;
+                homePct = total > 0 ? (homeVal / total) * 100 : 50;
+            }
+
+            const awayRankStr = awayRank ? `(${awayRank}) ` : '';
+            const homeRankStr = homeRank ? ` (${homeRank})` : '';
 
             return `
                 <div class="mb-3">
@@ -818,7 +951,7 @@
                             <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${awayColor};"></span>
                             <span class="font-mono text-[11px] font-black text-zinc-100">${awayDisplay}</span>
                         </div>
-                        <span class="text-zinc-500 text-[9px] uppercase tracking-widest font-black">${label}</span>
+                        <span class="text-zinc-400 text-[9px] uppercase tracking-wider font-black text-center">${awayRankStr}${label}${homeRankStr}</span>
                         <div class="flex items-center gap-1">
                             <span class="font-mono text-[11px] font-black text-zinc-100">${homeDisplay}</span>
                             <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${homeColor};"></span>
@@ -912,7 +1045,7 @@
                     hasComparisonData = true;
                     let hp = parseFloat(homeWinProb);
                     let ap = awayWinProb ? parseFloat(awayWinProb) : 100 - hp;
-                    html += generateComparisonBar('Win Probability', ap, hp, ap.toFixed(1) + '%', hp.toFixed(1) + '%', awayColor, homeColor);
+                    html += generateComparisonBar('Win Probability', ap, hp, ap.toFixed(1) + '%', hp.toFixed(1) + '%', awayColor, homeColor, false);
                 }
 
                 let awayTeamStats = data.boxscore?.teams?.find(t => t.team?.id === away.team?.id)?.statistics || [];
@@ -921,7 +1054,7 @@
                 if (awayTeamStats.length > 0 && homeTeamStats.length > 0) {
                     let statCount = 0;
                     for (let i = 0; i < awayTeamStats.length; i++) {
-                        if (statCount >= 5) break;
+                        if (statCount >= 6) break;
                         let aStat = awayTeamStats[i];
                         let hStat = homeTeamStats.find(s => s.name === aStat.name);
                         if (hStat && aStat.displayValue && hStat.displayValue) {
@@ -929,7 +1062,20 @@
                             let hVal = parseFloat(hStat.displayValue.replace(/,/g, ''));
                             if (!isNaN(aVal) && !isNaN(hVal)) {
                                 hasComparisonData = true;
-                                html += generateComparisonBar(aStat.label || aStat.name, aVal, hVal, aStat.displayValue, hStat.displayValue, awayColor, homeColor);
+                                
+                                const statNameLower = (aStat.label || aStat.name || '').toLowerCase();
+                                const isLowerBetter = statNameLower.includes('allowed') || 
+                                                      statNameLower.includes('against') || 
+                                                      statNameLower.includes('opp') || 
+                                                      statNameLower.includes('points per game allowed') || 
+                                                      statNameLower.includes('sacks allowed') || 
+                                                      statNameLower.includes('penalty') || 
+                                                      statNameLower.includes('turnover');
+
+                                const aRank = aStat.rankDisplayValue || aStat.rank;
+                                const hRank = hStat.rankDisplayValue || hStat.rank;
+
+                                html += generateComparisonBar(aStat.label || aStat.name, aVal, hVal, aStat.displayValue, hStat.displayValue, awayColor, homeColor, isLowerBetter, aRank, hRank);
                                 statCount++;
                             }
                         }
@@ -959,6 +1105,71 @@
                     html += `</div>`;
                 } else {
                     html += `<div class="bg-zinc-900/40 border border-dashed border-zinc-800 text-center text-[10px] text-zinc-600 py-6 rounded-xl uppercase tracking-wider">No scoring plays yet</div>`;
+                }
+                html += `</div>`;
+
+                // Detailed Player Stats Section
+                html += `<div class="space-y-3 pt-2">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-[11px] font-black uppercase tracking-widest text-cyan-400">👤 Detailed Player Stats</h4>`;
+
+                if (data.boxscore?.players && data.boxscore.players.length > 0) {
+                    html += `<div class="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">`;
+                    data.boxscore.players.forEach((teamStats, idx) => {
+                        const isActive = idx === selectedTeamIndex;
+                        const btnClass = isActive 
+                            ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' 
+                            : 'text-zinc-500 hover:text-zinc-300 border border-transparent';
+                        html += `<button onclick="renderGameModalContent(${idx})" class="px-3 py-1 text-[10px] rounded transition-all cursor-pointer uppercase tracking-wider ${btnClass}">${teamStats.team?.abbreviation || 'TEAM'}</button>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+
+                if (data.boxscore?.players && data.boxscore.players.length > 0) {
+                    const teamStats = data.boxscore.players[selectedTeamIndex];
+                    html += `<div class="bg-zinc-900/50 border border-zinc-800 p-3 rounded-2xl space-y-4 max-h-72 overflow-y-auto custom-scrollbar">`;
+                    
+                    teamStats.statistics?.forEach(statGroup => {
+                        if (!statGroup.athletes || statGroup.athletes.length === 0) return;
+
+                        html += `<div class="space-y-2">`;
+                        html += `<div class="text-[10px] font-black text-white uppercase tracking-widest bg-zinc-800/80 px-2.5 py-1 rounded border border-zinc-700/50 inline-block">${statGroup.label || statGroup.name}</div>`;
+                        
+                        html += `<div class="overflow-x-auto custom-scrollbar">
+                                    <table class="w-full text-left text-[11px] whitespace-nowrap">
+                                        <thead>
+                                            <tr class="text-zinc-500 border-b border-zinc-800">
+                                                <th class="py-1.5 pl-2 font-bold uppercase tracking-wider text-left sticky left-0 bg-zinc-900/95 z-10">Athlete</th>`;
+                        
+                        if (statGroup.labels && statGroup.labels.length > 0) {
+                            statGroup.labels.forEach(lbl => {
+                                html += `<th class="py-1.5 px-2 font-black uppercase tracking-widest text-right text-[9px] text-zinc-600">${lbl}</th>`;
+                            });
+                        }
+
+                        html += `           </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-zinc-800/30">`;
+                        
+                        statGroup.athletes?.forEach(athlete => {
+                            html += `
+                                        <tr class="hover:bg-zinc-800/40">
+                                            <td class="py-1.5 pl-2 font-semibold text-zinc-200 sticky left-0 bg-zinc-900/95 z-10 truncate max-w-[110px]">${athlete.athlete?.displayName || 'Unknown'}</td>`;
+                            
+                            if (athlete.stats && athlete.stats.length > 0) {
+                                athlete.stats.forEach(s => {
+                                    html += `<td class="py-1.5 px-2 text-right font-mono text-cyan-400 font-bold">${s}</td>`;
+                                });
+                            }
+                            html += `   </tr>`;
+                        });
+                        html += `       </tbody>
+                                    </table>
+                                </div>
+                            </div>`;
+                    });
+                    html += `</div>`;
                 }
                 html += `</div>`;
             }
