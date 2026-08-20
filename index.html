@@ -23,7 +23,7 @@
 
     <!-- Header / Centered Mobile-First Top Bar -->
     <header class="bg-zinc-950/95 backdrop-blur-xl sticky top-0 z-30 border-b border-zinc-900 shadow-lg">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col items-center gap-2.5">
+        <div class="max-w-4xl mx-auto px-3 py-2.5 flex flex-col items-center gap-2">
             
             <!-- Centered Branding -->
             <div class="flex items-center justify-center space-x-2">
@@ -33,9 +33,9 @@
             </div>
 
             <!-- Centered Controls: Favorite Team & Week Selector -->
-            <div class="flex items-center justify-center gap-2 w-full max-w-sm">
+            <div class="flex items-center justify-center gap-1.5 w-full max-w-sm">
                 <!-- Favorite Team Selector Dropdown -->
-                <select id="fav-team-selector" onchange="changeFavoriteTeam(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs font-semibold text-amber-400 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-500 cursor-pointer appearance-none text-center">
+                <select id="fav-team-selector" onchange="changeFavoriteTeam(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-[11px] font-semibold text-amber-400 rounded-lg px-2 py-1.5 outline-none focus:border-cyan-500 cursor-pointer appearance-none text-center truncate">
                     <option value="">⭐ Fav Team...</option>
                     <option value="Arizona Cardinals">Arizona Cardinals</option>
                     <option value="Atlanta Falcons">Atlanta Falcons</option>
@@ -72,7 +72,7 @@
                 </select>
 
                 <!-- Week Selector Dropdown -->
-                <select id="week-selector" onchange="changeWeek(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300 rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500 cursor-pointer appearance-none text-center">
+                <select id="week-selector" onchange="changeWeek(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-[11px] font-semibold text-zinc-300 rounded-lg px-2 py-1.5 outline-none focus:border-indigo-500 cursor-pointer appearance-none text-center truncate">
                     <option value="">Current Week</option>
                 </select>
             </div>
