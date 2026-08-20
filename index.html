@@ -21,21 +21,21 @@
 </head>
 <body class="bg-zinc-950 text-zinc-200 min-h-screen font-sans selection:bg-cyan-500/30 selection:text-cyan-200 pb-24 antialiased">
 
-    <!-- Header / Compact Top Bar -->
+    <!-- Header / Centered Mobile-First Top Bar -->
     <header class="bg-zinc-950/95 backdrop-blur-xl sticky top-0 z-30 border-b border-zinc-900 shadow-lg">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col items-center gap-2.5">
             
-            <!-- Branding -->
-            <div class="flex items-center space-x-2">
+            <!-- Centered Branding -->
+            <div class="flex items-center justify-center space-x-2">
                 <span class="text-xl drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">🏈</span>
                 <h1 class="text-lg font-black tracking-widest bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">ProGrid Live</h1>
                 <span class="text-[10px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(99,102,241,0.1)]">NFL</span>
             </div>
 
-            <!-- Controls: Favorite Team & Week Selector -->
-            <div class="flex items-center gap-2">
+            <!-- Centered Controls: Favorite Team & Week Selector -->
+            <div class="flex items-center justify-center gap-2 w-full max-w-sm">
                 <!-- Favorite Team Selector Dropdown -->
-                <select id="fav-team-selector" onchange="changeFavoriteTeam(this.value)" class="bg-zinc-900 border border-zinc-800 text-xs font-semibold text-amber-400 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-500 cursor-pointer appearance-none">
+                <select id="fav-team-selector" onchange="changeFavoriteTeam(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs font-semibold text-amber-400 rounded-lg px-2.5 py-2 outline-none focus:border-cyan-500 cursor-pointer appearance-none text-center">
                     <option value="">⭐ Fav Team...</option>
                     <option value="Arizona Cardinals">Arizona Cardinals</option>
                     <option value="Atlanta Falcons">Atlanta Falcons</option>
@@ -72,7 +72,7 @@
                 </select>
 
                 <!-- Week Selector Dropdown -->
-                <select id="week-selector" onchange="changeWeek(this.value)" class="bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300 rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500 cursor-pointer appearance-none">
+                <select id="week-selector" onchange="changeWeek(this.value)" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300 rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500 cursor-pointer appearance-none text-center">
                     <option value="">Current Week</option>
                 </select>
             </div>
