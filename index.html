@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProScore - NFL Live Tracker</title>
+    <title>Chase Score - NFL Live Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         /* Custom scrollbar for a sleeker dark mode feel */
@@ -28,7 +28,7 @@
             <div class="flex items-center space-x-3 w-full md:w-auto justify-center md:justify-start">
                 <div class="flex items-center space-x-3">
                     <span class="text-2xl drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">⚡</span>
-                    <h1 class="text-2xl font-black tracking-widest bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-sm">PROSCORE</h1>
+                    <h1 class="text-2xl font-black tracking-widest bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-sm">CHASE SCORE</h1>
                     <span class="text-[10px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(99,102,241,0.1)]">NFL</span>
                 </div>
             </div>
@@ -86,8 +86,6 @@
         <div class="border-t border-zinc-800/80 max-w-6xl mx-auto px-4 flex gap-6 sm:gap-8 overflow-x-auto custom-scrollbar">
             <button onclick="switchPage('scores')" id="tab-scores" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-cyan-400 text-cyan-400 transition-colors whitespace-nowrap cursor-pointer">Scores</button>
             <button onclick="switchPage('standings')" id="tab-standings" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Standings</button>
-            <button onclick="switchPage('stats')" id="tab-stats" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Stats</button>
-            <button onclick="switchPage('schedule')" id="tab-schedule" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Schedule</button>
         </div>
     </header>
 
@@ -110,29 +108,17 @@
 
         <!-- PAGE 2: STANDINGS -->
         <div id="page-standings" class="page-section hidden">
-            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
-                <span class="text-4xl mb-4 opacity-50">🏆</span>
-                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">Standings Engine</p>
-                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
+            <!-- Standings Sub-Navigation -->
+            <div class="flex justify-center mb-6 sm:mb-8">
+                <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-xl p-1.5 flex gap-1 shadow-lg w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                    <button onclick="setStandingsView('division')" id="st-tab-division" class="flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 cursor-pointer">Division</button>
+                    <button onclick="setStandingsView('conference')" id="st-tab-conference" class="flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer">Conference</button>
+                    <button onclick="setStandingsView('playoff')" id="st-tab-playoff" class="flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all text-zinc-500 hover:text-zinc-300 border border-transparent cursor-pointer">Playoff</button>
+                </div>
             </div>
-        </div>
 
-        <!-- PAGE 3: STATS -->
-        <div id="page-stats" class="page-section hidden">
-            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
-                <span class="text-4xl mb-4 opacity-50">📈</span>
-                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">League Leaders</p>
-                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
-            </div>
-        </div>
-
-        <!-- PAGE 4: SCHEDULE -->
-        <div id="page-schedule" class="page-section hidden">
-            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
-                <span class="text-4xl mb-4 opacity-50">🗓️</span>
-                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">Full Season Schedule</p>
-                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
-            </div>
+            <!-- Dynamic Standings Content -->
+            <div id="standings-content"></div>
         </div>
 
     </main>
@@ -167,6 +153,8 @@
         let isInitialLoad = true;
         let selectedSeasonType = '';
         let selectedWeek = '';
+        let currentActiveSeasonType = '2'; // 1 = Preseason, 2 = Regular, 3 = Postseason
+        let currentActiveWeekNumber = 1;
         let globalBoxscoreData = null;
         let currentPage = 'scores';
 
@@ -196,16 +184,220 @@
             });
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
 
-            // 3. Trigger Data Loads (Ready for Phase 2)
+            // 3. Trigger Data Loads
             if (pageId === 'scores' && cachedEvents.length === 0) fetchScoresForSelected();
             if (pageId === 'standings') loadStandings();
-            if (pageId === 'stats') loadStats();
-            if (pageId === 'schedule') loadSchedule();
         }
 
-        function loadStandings() { /* Stub for next prompt */ }
-        function loadStats() { /* Stub for next prompt */ }
-        function loadSchedule() { /* Stub for next prompt */ }
+        // ==========================================
+        // MULTI-VIEW STANDINGS ENGINE
+        // ==========================================
+        let currentStandingsView = 'division';
+
+        function setStandingsView(view) {
+            const contentDiv = document.getElementById('standings-content');
+            if (currentStandingsView === view && contentDiv.dataset.loaded === view) return;
+            
+            currentStandingsView = view;
+            
+            // Update Tab UI Colors
+            ['division', 'conference', 'playoff'].forEach(tab => {
+                const el = document.getElementById(`st-tab-${tab}`);
+                if (tab === view) {
+                    el.className = "flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 cursor-pointer shadow-inner";
+                } else {
+                    el.className = "flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 border border-transparent cursor-pointer";
+                }
+            });
+
+            loadStandings(true); // Force fetch new view data
+        }
+
+        async function loadStandings(force = false) {
+            const contentDiv = document.getElementById('standings-content');
+            
+            // Prevent re-fetching if data for this view is already loaded
+            if (!force && contentDiv.dataset.loaded === currentStandingsView) return;
+
+            // Loading state
+            contentDiv.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-24 text-cyan-500/70 animate-pulse">
+                    <svg class="w-10 h-10 animate-spin mb-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="font-medium tracking-widest text-xs uppercase">Compiling ${currentStandingsView} Standings...</p>
+                </div>`;
+
+            try {
+                // Map the internal view state to the exact ESPN API parameters
+                let type = 0;
+                let level = 3; // Default: Division
+                if (currentStandingsView === 'conference') { type = 0; level = 2; }
+                if (currentStandingsView === 'playoff') { type = 1; level = 2; }
+
+                // Check if the user selected a future week/season relative to what is actively being played
+                let isFuture = false;
+                if (selectedSeasonType && currentActiveSeasonType) {
+                    const selST = parseInt(selectedSeasonType, 10);
+                    const actST = parseInt(currentActiveSeasonType, 10);
+                    if (selST > actST) {
+                        isFuture = true;
+                    } else if (selST === actST && selectedWeek && currentActiveWeekNumber) {
+                        if (parseInt(selectedWeek, 10) > currentActiveWeekNumber) {
+                            isFuture = true;
+                        }
+                    }
+                }
+
+                // If "Current Week" or a future week is selected, default to the live, up-to-date active season type
+                let activeSeasonType = (isFuture || !selectedSeasonType) ? currentActiveSeasonType : selectedSeasonType;
+                activeSeasonType = activeSeasonType || '2';
+
+                const targetUrl = `https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&seasontype=${activeSeasonType}&type=${type}&level=${level}`;
+                const data = await fetchSafe(targetUrl);
+                
+                if (!data || !data.children) throw new Error("Invalid API Data Structure");
+
+                let html = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">';
+
+                data.children.forEach(conference => {
+                    html += `
+                        <div class="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 sm:p-6 overflow-hidden shadow-inner h-fit">
+                            <h3 class="text-lg font-black uppercase tracking-widest text-cyan-400 mb-6 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span> ${conference.name}
+                            </h3>
+                    `;
+
+                    // Handle Nested Data Structure based on View Type
+                    if (currentStandingsView === 'division') {
+                        conference.children.forEach(division => {
+                            html += buildStandingsTable(division.name, division.standings.entries, false);
+                        });
+                    } else {
+                        // Conference & Playoff views don't have nested divisions in the API response
+                        if (conference.standings && conference.standings.entries) {
+                            let title = currentStandingsView === 'playoff' ? `${conference.name} Playoff Picture` : `${conference.name} Rank`;
+                            html += buildStandingsTable(title, conference.standings.entries, currentStandingsView === 'playoff');
+                        }
+                    }
+                    
+                    html += `</div>`;
+                });
+
+                html += '</div>';
+                contentDiv.innerHTML = html;
+                contentDiv.dataset.loaded = currentStandingsView; // Mark this specific view as loaded
+
+            } catch (err) {
+                console.error("Standings fetch failed:", err);
+                contentDiv.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-24 bg-zinc-900/30 rounded-3xl border border-dashed border-zinc-800/80">
+                        <span class="text-4xl mb-4">⚠️</span>
+                        <p class="uppercase tracking-widest text-sm font-black text-red-400">Connection Error</p>
+                        <p class="text-xs text-zinc-500 mt-2 font-medium">Unable to fetch live standings data. ESPN may be blocking requests right now.</p>
+                        <button onclick="loadStandings(true)" class="mt-6 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white rounded-lg transition-colors cursor-pointer border border-zinc-700 shadow-lg">Retry Connection</button>
+                    </div>`;
+            }
+        }
+
+        // Helper function to build the actual table row HTML
+        function buildStandingsTable(title, entries, isPlayoffView) {
+            let html = `
+                <div class="mb-8 last:mb-0">
+                    <h4 class="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3 border-b border-zinc-800/80 pb-2 flex justify-between items-center">
+                        <span>${title}</span>
+                        ${isPlayoffView ? '<span class="text-[9px] text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">TOP 7 CLINCH</span>' : ''}
+                    </h4>
+                    <div class="overflow-x-auto custom-scrollbar pb-2">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="text-zinc-600 text-[10px] uppercase tracking-widest bg-zinc-950/30">
+                                    <th class="py-2.5 px-3 font-bold w-full rounded-l-md">${isPlayoffView ? 'Seed & Team' : 'Team'}</th>
+                                    <th class="py-2.5 px-3 font-bold text-center">W</th>
+                                    <th class="py-2.5 px-3 font-bold text-center">L</th>
+                                    <th class="py-2.5 px-3 font-bold text-center">T</th>
+                                    <th class="py-2.5 px-3 font-bold text-center rounded-r-md">PCT</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-800/40">
+            `;
+
+            entries.forEach((entry, idx) => {
+                const team = entry.team;
+                const stats = entry.stats;
+                
+                const getStat = (abbr) => {
+                    if (!stats || !Array.isArray(stats)) return '-';
+                    
+                    const statMapping = {
+                        'W': ['wins', 'w', 'win'],
+                        'L': ['losses', 'l', 'loss'],
+                        'T': ['ties', 't', 'tie'],
+                        'PCT': ['winpercent', 'pct', 'percentage']
+                    };
+                    
+                    const targets = statMapping[abbr] || [abbr.toLowerCase()];
+                    
+                    const stat = stats.find(s => {
+                        const sName = (s.name || '').toLowerCase();
+                        const sAbbr = (s.abbreviation || '').toLowerCase();
+                        const sType = (s.type || '').toLowerCase();
+                        
+                        return targets.includes(sName) || targets.includes(sAbbr) || targets.includes(sType);
+                    });
+                    
+                    if (stat) {
+                        if (stat.displayValue !== undefined && stat.displayValue !== null) {
+                            return stat.displayValue;
+                        }
+                        if (stat.value !== undefined && stat.value !== null) {
+                            if (abbr === 'PCT' && !isNaN(stat.value)) {
+                                return stat.value.toFixed(3).replace(/^0/, '');
+                            }
+                            return stat.value.toString();
+                        }
+                    }
+                    
+                    return '-';
+                };
+
+                let rowClasses = "hover:bg-zinc-800/60 transition-colors group";
+                let seedBadge = '';
+
+                // Handle Playoff Formatting (Top 7 Teams)
+                if (isPlayoffView) {
+                    const seed = idx + 1;
+                    if (seed <= 7) {
+                        seedBadge = `<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 w-5 h-5 flex items-center justify-center rounded text-[10px] font-black mr-3 shadow-inner shrink-0">${seed}</span>`;
+                    } else {
+                        seedBadge = `<span class="bg-zinc-900/50 text-zinc-600 border border-zinc-800/50 w-5 h-5 flex items-center justify-center rounded text-[10px] font-black mr-3 shrink-0">${seed}</span>`;
+                        rowClasses += " opacity-50 hover:opacity-100"; 
+                    }
+                }
+
+                html += `
+                    <tr class="${rowClasses}">
+                        <td class="py-2.5 px-3 flex items-center">
+                            ${seedBadge}
+                            <div class="w-7 h-7 rounded-full bg-zinc-950 p-1 border border-zinc-700/50 flex items-center justify-center shrink-0 shadow-inner mr-3">
+                                <img src="${team.logos?.[0]?.href || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                            </div>
+                            <span class="font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors truncate">${team.displayName}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center text-zinc-300 font-mono">${getStat('W')}</td>
+                        <td class="py-2.5 px-3 text-center text-zinc-300 font-mono">${getStat('L')}</td>
+                        <td class="py-2.5 px-3 text-center text-zinc-500 font-mono">${getStat('T')}</td>
+                        <td class="py-2.5 px-3 text-center text-cyan-400 font-mono font-medium">${getStat('PCT')}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            return html;
+        }
 
         // ==========================================
         // SMART COLOR ENGINE (Anti-Clash & Luminance)
@@ -302,6 +494,20 @@
             throw lastError || new Error('Data unavailable');
         }
 
+        function updateActiveSeasonInfo(data) {
+            if (data.season && data.season.type) {
+                currentActiveSeasonType = data.season.type.toString();
+            } else if (data.leagues?.[0]?.season?.type) {
+                currentActiveSeasonType = data.leagues[0].season.type.toString();
+            }
+
+            if (data.week && data.week.number) {
+                currentActiveWeekNumber = parseInt(data.week.number, 10);
+            } else if (data.leagues?.[0]?.season?.week) {
+                currentActiveWeekNumber = parseInt(data.leagues[0].season.week, 10);
+            }
+        }
+
         async function loadCalendarAndScores() {
             const scoreboardContainer = document.getElementById('scoreboard');
             const weekSelector = document.getElementById('week-selector');
@@ -316,7 +522,8 @@
 
             try {
                 const data = await fetchSafe(endpoint);
-                
+                updateActiveSeasonInfo(data);
+
                 if (data.leagues && data.leagues[0] && data.leagues[0].calendar) {
                     let optionsHTML = '<option value="">Current Week</option>';
                     const calendar = data.leagues[0].calendar;
@@ -372,12 +579,18 @@
             }
             isInitialLoad = false;
             
+            // Clear standings cache on week change so standings re-evaluate properly
+            const contentDiv = document.getElementById('standings-content');
+            if (contentDiv) contentDiv.dataset.loaded = '';
+
             if (currentPage === 'scores') {
                 document.getElementById('scoreboard').innerHTML = `
                     <div class="col-span-full text-center py-16 text-cyan-500/70 font-medium animate-pulse uppercase tracking-widest text-sm">
                         Scanning Games...
                     </div>`;
                 await fetchScoresForSelected();
+            } else if (currentPage === 'standings') {
+                await loadStandings(true);
             }
         }
 
@@ -399,6 +612,7 @@
 
             try {
                 const data = await fetchSafe(targetUrl);
+                updateActiveSeasonInfo(data);
                 cachedEvents = data.events || [];
                 await renderScoreboard();
                 document.getElementById('last-updated').textContent = `Sync: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
@@ -642,7 +856,7 @@
             }
         }
 
-        // Helper function for building elegant Comparison Progress Bars themed to both teams
+        // Helper function for building comparison progress bars
         function generateComparisonBar(label, awayVal, homeVal, awayDisplay, homeDisplay, awayColor, homeColor) {
             let total = awayVal + homeVal;
             let awayPct = total > 0 ? (awayVal / total) * 100 : 50;
@@ -708,7 +922,6 @@
             if (statusState === 'in') statusBadgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse';
             if (statusState === 'pre') statusBadgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]';
 
-            // REDESIGNED HEADER: High Detail Matchup Panel
             let html = `
                 <div class="relative w-full bg-zinc-950 p-6 sm:p-8 rounded-2xl border border-zinc-800 shadow-inner overflow-hidden mb-8 flex flex-col">
                     
@@ -748,10 +961,7 @@
                 </div>
             `;
 
-            // CONDITIONAL RENDER: PRE-GAME (Team Comparison) VS LIVE/POST GAME
             if (statusState === 'pre') {
-                
-                // TEAM STATS COMPARISON THEMED TO BOTH TEAMS
                 html += `
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
@@ -766,7 +976,6 @@
                         </div>
 
                         <div class="bg-zinc-900/60 border border-zinc-800 p-4 sm:p-6 rounded-2xl space-y-4 relative overflow-hidden backdrop-blur-sm">
-                            
                             <div class="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-10 blur-2xl pointer-events-none" style="background-color: ${awayColor};"></div>
                             <div class="absolute -bottom-12 -right-12 w-32 h-32 rounded-full opacity-10 blur-2xl pointer-events-none" style="background-color: ${homeColor};"></div>
                 `;
@@ -789,7 +998,7 @@
                 if (awayTeamStats.length > 0 && homeTeamStats.length > 0) {
                     let statCount = 0;
                     for (let i = 0; i < awayTeamStats.length; i++) {
-                        if (statCount >= 6) break; // Display top 6 stats
+                        if (statCount >= 6) break;
                         let aStat = awayTeamStats[i];
                         let hStat = homeTeamStats.find(s => s.name === aStat.name);
                         
@@ -813,9 +1022,6 @@
                 html += `</div></div>`;
 
             } else {
-                
-                // LIVE & POST GAME LOGIC
-                // 1. Scoring Summary
                 html += `<div class="space-y-4">
                     <h4 class="text-xs font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
                         <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Scoring Summary
@@ -840,8 +1046,6 @@
                 }
                 html += `</div>`;
 
-
-                // 2. Detailed Player Stats
                 html += `<div class="space-y-4 pt-4">
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <h4 class="text-xs font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
