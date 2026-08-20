@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ProScore - NFL Live Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Custom scrollbar for a sleeker dark mode feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 min-h-screen font-sans selection:bg-cyan-500/30 selection:text-cyan-200 pb-12 antialiased">
+
+    <!-- Header -->
+    <header class="bg-zinc-950/90 backdrop-blur-xl sticky top-0 z-30 shadow-lg shadow-black/50">
+        <!-- Top Bar: Branding & Selectors -->
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Branding -->
+            <div class="flex items-center space-x-3 w-full md:w-auto justify-center md:justify-start">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">⚡</span>
+                    <h1 class="text-2xl font-black tracking-widest bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-sm">PROSCORE</h1>
+                    <span class="text-[10px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(99,102,241,0.1)]">NFL</span>
+                </div>
+            </div>
+
+            <!-- Controls: Favorite Team & Week Selector -->
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto md:justify-end">
+                
+                <!-- Favorite Team Selector -->
+                <div class="relative w-full sm:w-auto">
+                    <select id="fav-team-selector" onchange="changeFavoriteTeam(this.value)" class="w-full sm:w-[220px] bg-zinc-900 border border-zinc-800 text-sm font-semibold text-amber-400 rounded-xl px-4 py-3 sm:py-2 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 cursor-pointer transition-all appearance-none text-center sm:text-left">
+                        <option value="">⭐ Select Favorite Team...</option>
+                        <option value="Arizona Cardinals">Arizona Cardinals</option>
+                        <option value="Atlanta Falcons">Atlanta Falcons</option>
+                        <option value="Baltimore Ravens">Baltimore Ravens</option>
+                        <option value="Buffalo Bills">Buffalo Bills</option>
+                        <option value="Carolina Panthers">Carolina Panthers</option>
+                        <option value="Chicago Bears">Chicago Bears</option>
+                        <option value="Cincinnati Bengals">Cincinnati Bengals</option>
+                        <option value="Cleveland Browns">Cleveland Browns</option>
+                        <option value="Dallas Cowboys">Dallas Cowboys</option>
+                        <option value="Denver Broncos">Denver Broncos</option>
+                        <option value="Detroit Lions">Detroit Lions</option>
+                        <option value="Green Bay Packers">Green Bay Packers</option>
+                        <option value="Houston Texans">Houston Texans</option>
+                        <option value="Indianapolis Colts">Indianapolis Colts</option>
+                        <option value="Jacksonville Jaguars">Jacksonville Jaguars</option>
+                        <option value="Kansas City Chiefs">Kansas City Chiefs</option>
+                        <option value="Las Vegas Raiders">Las Vegas Raiders</option>
+                        <option value="Los Angeles Chargers">Los Angeles Chargers</option>
+                        <option value="Los Angeles Rams">Los Angeles Rams</option>
+                        <option value="Miami Dolphins">Miami Dolphins</option>
+                        <option value="Minnesota Vikings">Minnesota Vikings</option>
+                        <option value="New England Patriots">New England Patriots</option>
+                        <option value="New Orleans Saints">New Orleans Saints</option>
+                        <option value="New York Giants">New York Giants</option>
+                        <option value="New York Jets">New York Jets</option>
+                        <option value="Philadelphia Eagles">Philadelphia Eagles</option>
+                        <option value="Pittsburgh Steelers">Pittsburgh Steelers</option>
+                        <option value="San Francisco 49ers">San Francisco 49ers</option>
+                        <option value="Seattle Seahawks">Seattle Seahawks</option>
+                        <option value="Tampa Bay Buccaneers">Tampa Bay Buccaneers</option>
+                        <option value="Tennessee Titans">Tennessee Titans</option>
+                        <option value="Washington Commanders">Washington Commanders</option>
+                    </select>
+                </div>
+
+                <!-- Week Selector Dropdown -->
+                <select id="week-selector" onchange="changeWeek(this.value)" class="w-full sm:w-[200px] bg-zinc-900 border border-zinc-800 text-sm font-semibold text-zinc-300 rounded-xl px-4 py-3 sm:py-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all appearance-none text-center sm:text-left">
+                    <option value="">Current Week</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- App Navigation Tabs -->
+        <div class="border-t border-zinc-800/80 max-w-6xl mx-auto px-4 flex gap-6 sm:gap-8 overflow-x-auto custom-scrollbar">
+            <button onclick="switchPage('scores')" id="tab-scores" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-cyan-400 text-cyan-400 transition-colors whitespace-nowrap cursor-pointer">Scores</button>
+            <button onclick="switchPage('standings')" id="tab-standings" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Standings</button>
+            <button onclick="switchPage('stats')" id="tab-stats" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Stats</button>
+            <button onclick="switchPage('schedule')" id="tab-schedule" class="nav-tab py-3.5 text-xs font-black uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer">Schedule</button>
+        </div>
+    </header>
+
+    <!-- Main Content Container (SPA Router) -->
+    <main class="max-w-6xl mx-auto px-4 mt-6 sm:mt-8">
+        
+        <!-- PAGE 1: SCORES (Active) -->
+        <div id="page-scores" class="page-section">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-2 px-1">
+                <h2 class="text-xs sm:text-sm font-black tracking-widest text-zinc-500 uppercase flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-zinc-700"></span> NFL Matchups
+                </h2>
+                <span id="last-updated" class="text-[10px] sm:text-xs font-mono text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800"></span>
+            </div>
+            
+            <div id="scoreboard" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <p class="text-zinc-600 font-medium col-span-full text-center py-12 animate-pulse">Establishing connection...</p>
+            </div>
+        </div>
+
+        <!-- PAGE 2: STANDINGS -->
+        <div id="page-standings" class="page-section hidden">
+            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
+                <span class="text-4xl mb-4 opacity-50">🏆</span>
+                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">Standings Engine</p>
+                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
+            </div>
+        </div>
+
+        <!-- PAGE 3: STATS -->
+        <div id="page-stats" class="page-section hidden">
+            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
+                <span class="text-4xl mb-4 opacity-50">📈</span>
+                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">League Leaders</p>
+                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
+            </div>
+        </div>
+
+        <!-- PAGE 4: SCHEDULE -->
+        <div id="page-schedule" class="page-section hidden">
+            <div class="flex flex-col items-center justify-center py-24 text-zinc-600 border border-dashed border-zinc-800/80 rounded-3xl bg-zinc-900/30 shadow-inner">
+                <span class="text-4xl mb-4 opacity-50">🗓️</span>
+                <p class="uppercase tracking-widest text-sm font-black text-zinc-400">Full Season Schedule</p>
+                <p class="text-xs text-zinc-500 mt-2 font-medium">Ready for Phase 2 API integration.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Game Center Box (Modal) -->
+    <div id="gamecast-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-end sm:justify-center sm:p-4">
+        <div class="bg-zinc-950 sm:bg-zinc-900 sm:border border-zinc-800 w-full max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-2xl overflow-y-auto shadow-2xl shadow-cyan-900/10 flex flex-col relative">
+            
+            <!-- Mobile pull-indicator -->
+            <div class="w-12 h-1.5 bg-zinc-800 rounded-full mx-auto mt-3 sm:hidden"></div>
+
+            <div class="p-4 sm:p-5 flex justify-between items-center sticky top-0 bg-zinc-950 sm:bg-zinc-900 z-50 backdrop-blur-xl border-b border-zinc-800/50 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+                <h3 id="modal-header-title" class="font-black tracking-widest text-lg bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent uppercase">Game Center</h3>
+                <button onclick="closeGamecast()" class="text-zinc-500 hover:text-white bg-zinc-900 sm:bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full h-9 w-9 flex items-center justify-center cursor-pointer transition-colors shadow-inner shadow-black/50">✕</button>
+            </div>
+            
+            <div id="modal-content" class="p-4 sm:p-6 space-y-6 pb-12 sm:pb-6 relative z-10">
+                <div class="text-center py-20 text-zinc-600 font-medium animate-pulse flex flex-col items-center gap-3">
+                    <svg class="w-8 h-8 animate-spin text-cyan-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Syncing Live Data...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const endpoint = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
+
+        let cachedEvents = [];
+        let favoriteTeam = localStorage.getItem('proscore_fav_nfl_team') || 'Pittsburgh Steelers';
+        
+        let isInitialLoad = true;
+        let selectedSeasonType = '';
+        let selectedWeek = '';
+        let globalBoxscoreData = null;
+        let currentPage = 'scores';
+
+        if (favoriteTeam) {
+            const selectEl = document.getElementById('fav-team-selector');
+            if (selectEl) selectEl.value = favoriteTeam;
+        }
+
+        // ==========================================
+        // SINGLE PAGE APP ROUTER
+        // ==========================================
+        function switchPage(pageId) {
+            currentPage = pageId;
+            
+            // 1. Update Tabs UI
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('border-cyan-400', 'text-cyan-400');
+                tab.classList.add('border-transparent', 'text-zinc-500');
+            });
+            const activeTab = document.getElementById(`tab-${pageId}`);
+            activeTab.classList.remove('border-transparent', 'text-zinc-500');
+            activeTab.classList.add('border-cyan-400', 'text-cyan-400');
+
+            // 2. Hide all pages, show target page
+            document.querySelectorAll('.page-section').forEach(page => {
+                page.classList.add('hidden');
+            });
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+
+            // 3. Trigger Data Loads (Ready for Phase 2)
+            if (pageId === 'scores' && cachedEvents.length === 0) fetchScoresForSelected();
+            if (pageId === 'standings') loadStandings();
+            if (pageId === 'stats') loadStats();
+            if (pageId === 'schedule') loadSchedule();
+        }
+
+        function loadStandings() { /* Stub for next prompt */ }
+        function loadStats() { /* Stub for next prompt */ }
+        function loadSchedule() { /* Stub for next prompt */ }
+
+        // ==========================================
+        // SMART COLOR ENGINE (Anti-Clash & Luminance)
+        // ==========================================
+        function hexToRgb(hex) {
+            if (!hex) return {r:0,g:0,b:0};
+            hex = hex.replace('#', '');
+            if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+            return {
+                r: parseInt(hex.substring(0,2), 16),
+                g: parseInt(hex.substring(2,4), 16),
+                b: parseInt(hex.substring(4,6), 16)
+            };
+        }
+
+        function getLuminance(hex) {
+            let c = hexToRgb(hex);
+            return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b);
+        }
+
+        function isColorReadable(hex) {
+            if (!hex) return false;
+            return getLuminance(hex) >= 40; 
+        }
+
+        function colorsClash(hex1, hex2) {
+            let c1 = hexToRgb(hex1);
+            let c2 = hexToRgb(hex2);
+            let distance = Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+            return distance < 80; 
+        }
+
+        function resolveMatchupColors(awayTeam, homeTeam) {
+            let awayPrimary = awayTeam?.color ? '#' + awayTeam.color : null;
+            let awayAlt = awayTeam?.alternateColor ? '#' + awayTeam.alternateColor : null;
+            
+            let homePrimary = homeTeam?.color ? '#' + homeTeam.color : null;
+            let homeAlt = homeTeam?.alternateColor ? '#' + homeTeam.alternateColor : null;
+
+            let getReadable = (p, a, fallback) => {
+                let options = [];
+                if (p && isColorReadable(p)) options.push(p);
+                if (a && isColorReadable(a) && a !== p) options.push(a);
+                if (options.length === 0) {
+                    if (a && isColorReadable(a)) options.push(a); 
+                    else options.push(fallback); 
+                }
+                return options;
+            };
+
+            let awayOptions = getReadable(awayPrimary, awayAlt, '#0ea5e9'); 
+            let homeOptions = getReadable(homePrimary, homeAlt, '#6366f1'); 
+
+            let finalAway = awayOptions[0];
+            let finalHome = homeOptions[0];
+
+            if (colorsClash(finalAway, finalHome)) {
+                if (awayOptions.length > 1 && !colorsClash(awayOptions[1], finalHome)) {
+                    finalAway = awayOptions[1];
+                } else if (homeOptions.length > 1 && !colorsClash(finalAway, homeOptions[1])) {
+                    finalHome = homeOptions[1];
+                } else {
+                    finalHome = '#e4e4e7'; 
+                }
+            }
+
+            return { awayColor: finalAway, homeColor: finalHome };
+        }
+        // ==========================================
+
+        async function fetchWithTimeout(url, timeout = 10000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeout);
+            try {
+                const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        async function fetchSafe(url) {
+            const attempts = [
+                () => fetchWithTimeout(url),
+                () => fetchWithTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`),
+                () => fetchWithTimeout(`https://corsproxy.io/?url=${encodeURIComponent(url)}`)
+            ];
+
+            let lastError;
+            for (const attempt of attempts) {
+                try { return await attempt(); } catch (err) { lastError = err; }
+            }
+            throw lastError || new Error('Data unavailable');
+        }
+
+        async function loadCalendarAndScores() {
+            const scoreboardContainer = document.getElementById('scoreboard');
+            const weekSelector = document.getElementById('week-selector');
+
+            if (isInitialLoad) {
+                scoreboardContainer.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center py-16 animate-pulse text-cyan-500/70">
+                        <svg class="w-10 h-10 animate-spin mb-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <p class="font-medium text-sm tracking-widest uppercase">Fetching Schedule...</p>
+                    </div>`;
+            }
+
+            try {
+                const data = await fetchSafe(endpoint);
+                
+                if (data.leagues && data.leagues[0] && data.leagues[0].calendar) {
+                    let optionsHTML = '<option value="">Current Week</option>';
+                    const calendar = data.leagues[0].calendar;
+                    
+                    calendar.forEach(seasonPart => {
+                        const sType = seasonPart.value;
+                        if (seasonPart.entries) {
+                            seasonPart.entries.forEach(week => {
+                                let labelDisplay = week.label || week.alternateLabel || week.detail;
+                                if (sType === '1' && !labelDisplay.toLowerCase().includes('preseason')) {
+                                    labelDisplay = `Preseason ${labelDisplay}`;
+                                } else if (sType === '2' && !labelDisplay.toLowerCase().includes('regular')) {
+                                    labelDisplay = `Regular Season ${labelDisplay}`;
+                                }
+
+                                const valString = `${sType}|${week.value}`;
+                                let isSelected = (selectedSeasonType === sType && selectedWeek === week.value) ? 'selected' : '';
+
+                                optionsHTML += `<option value="${valString}" ${isSelected}>${labelDisplay}</option>`;
+                            });
+                        }
+                    });
+
+                    weekSelector.innerHTML = optionsHTML;
+                }
+
+                await fetchScoresForSelected();
+                isInitialLoad = false;
+            } catch (err) {
+                if (isInitialLoad) {
+                    scoreboardContainer.innerHTML = `
+                        <div class="col-span-full flex flex-col items-center py-16 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
+                            <span class="text-4xl mb-4">📡</span>
+                            <p class="text-red-400 font-bold mb-2">Connection Lost</p>
+                            <p class="text-zinc-500 text-sm mb-6 text-center px-4">Unable to reach the live data servers.</p>
+                            <button onclick="loadCalendarAndScores()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white font-semibold px-6 py-3 rounded-xl transition cursor-pointer shadow-lg">
+                                Retry Connection
+                            </button>
+                        </div>`;
+                    isInitialLoad = false;
+                }
+            }
+        }
+
+        async function changeWeek(valString) {
+            if (valString) {
+                const parts = valString.split('|');
+                selectedSeasonType = parts[0];
+                selectedWeek = parts[1];
+            } else {
+                selectedSeasonType = '';
+                selectedWeek = '';
+            }
+            isInitialLoad = false;
+            
+            if (currentPage === 'scores') {
+                document.getElementById('scoreboard').innerHTML = `
+                    <div class="col-span-full text-center py-16 text-cyan-500/70 font-medium animate-pulse uppercase tracking-widest text-sm">
+                        Scanning Games...
+                    </div>`;
+                await fetchScoresForSelected();
+            }
+        }
+
+        function changeFavoriteTeam(teamName) {
+            favoriteTeam = teamName;
+            localStorage.setItem('proscore_fav_nfl_team', teamName);
+            if (currentPage === 'scores') fetchScoresForSelected();
+        }
+
+        async function fetchScoresForSelected() {
+            let targetUrl = endpoint;
+            const params = new URLSearchParams();
+            
+            if (selectedSeasonType) params.append('seasontype', selectedSeasonType);
+            if (selectedWeek) params.append('week', selectedWeek);
+
+            const queryString = params.toString();
+            if (queryString) targetUrl += `?${queryString}`;
+
+            try {
+                const data = await fetchSafe(targetUrl);
+                cachedEvents = data.events || [];
+                await renderScoreboard();
+                document.getElementById('last-updated').textContent = `Sync: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            } catch (err) {
+                document.getElementById('scoreboard').innerHTML = `<p class="text-red-500 font-semibold col-span-full text-center py-12">Failed to load games for this selection.</p>`;
+            }
+        }
+
+        function isFavoriteGame(game, favTeam) {
+            if (!favTeam) return false;
+            const comp = game.competitions[0];
+            const home = comp.competitors.find(t => t.homeAway === 'home');
+            const away = comp.competitors.find(t => t.homeAway === 'away');
+            
+            const homeNames = [home.team.displayName, home.team.name, home.team.shortDisplayName].filter(Boolean);
+            const awayNames = [away.team.displayName, away.team.name, away.team.shortDisplayName].filter(Boolean);
+
+            return homeNames.includes(favTeam) || awayNames.includes(favTeam);
+        }
+
+        function getRecordSummary(competitor) {
+            if (!competitor.records || competitor.records.length === 0) return '';
+            const totalRecord = competitor.records.find(r => r.type === 'total' || r.name === 'overall');
+            return totalRecord?.summary || competitor.records[0]?.summary || '';
+        }
+
+        async function renderScoreboard() {
+            const container = document.getElementById('scoreboard');
+
+            let heroHTML = '';
+            let standardHTML = '';
+
+            if (cachedEvents.length > 0) {
+                const sortedEvents = [...cachedEvents].sort((a, b) => {
+                    const aFav = isFavoriteGame(a, favoriteTeam);
+                    const bFav = isFavoriteGame(b, favoriteTeam);
+                    if (aFav && !bFav) return -1;
+                    if (!aFav && bFav) return 1;
+                    return 0;
+                });
+
+                sortedEvents.forEach(game => {
+                    const comp = game.competitions[0];
+                    const home = comp.competitors.find(t => t.homeAway === 'home');
+                    const away = comp.competitors.find(t => t.homeAway === 'away');
+                    
+                    const statusState = game.status.type.state;
+                    const statusDesc = game.status.type.description;
+                    
+                    const venueName = comp.venue?.fullName || 'Stadium TBD';
+                    const city = comp.venue?.address?.city;
+                    const state = comp.venue?.address?.state;
+                    const venueLocation = [city, state].filter(Boolean).join(', ');
+                    const venueFullString = venueLocation ? `${venueName} — ${venueLocation}` : venueName;
+
+                    const awayRecord = getRecordSummary(away);
+                    const homeRecord = getRecordSummary(home);
+
+                    const awayRecordBadge = awayRecord ? `<span class="text-[11px] text-zinc-500 font-mono ml-2">(${awayRecord})</span>` : '';
+                    const homeRecordBadge = homeRecord ? `<span class="text-[11px] text-zinc-500 font-mono ml-2">(${homeRecord})</span>` : '';
+                    
+                    const gameDateObj = new Date(game.date);
+                    const dateString = gameDateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    const timeString = gameDateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                    const dateTimeDisplay = statusState === 'pre' ? `${dateString} • ${timeString}` : timeString;
+
+                    const isFav = isFavoriteGame(game, favoriteTeam);
+
+                    let statusBadgeColor = 'text-zinc-400 bg-zinc-900 border-zinc-800 shadow-inner shadow-black/50';
+                    if (statusState === 'in') statusBadgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse';
+                    if (statusState === 'pre') statusBadgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]';
+
+                    if (isFav) {
+                        heroHTML += `
+                            <div onclick="openGamecast('${game.id}')" class="col-span-full border border-indigo-500/50 bg-gradient-to-br from-indigo-900/20 via-zinc-900/80 to-zinc-950 p-5 sm:p-8 rounded-3xl shadow-[0_8px_30px_rgba(99,102,241,0.2)] hover:shadow-[0_8px_40px_rgba(99,102,241,0.3)] hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group mb-2 sm:mb-6">
+                                
+                                <div class="absolute top-0 right-0 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white text-[10px] sm:text-xs font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-widest flex items-center gap-1.5 shadow-lg z-10">
+                                    ⭐ Favorite
+                                </div>
+                                
+                                <div class="flex justify-between items-center mb-6 relative z-10">
+                                    <span class="text-xs sm:text-sm tracking-widest uppercase font-black px-4 py-1.5 rounded-full border ${statusBadgeColor}">${statusDesc}</span>
+                                    <span class="text-xs sm:text-sm text-zinc-400 font-medium tracking-wide mr-24 sm:mr-0">${dateTimeDisplay}</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-8 items-center relative z-10">
+                                    <div class="flex items-center justify-between bg-zinc-950/50 p-4 sm:p-6 rounded-2xl border border-zinc-800/80">
+                                        <div class="flex items-center gap-4 overflow-hidden">
+                                            <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-zinc-900 flex items-center justify-center p-2.5 border border-zinc-700/50 shrink-0 shadow-inner">
+                                                <img src="${away.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                                            </div>
+                                            <div class="truncate">
+                                                <div class="font-bold text-xl sm:text-2xl text-zinc-100 group-hover:text-cyan-400 transition-colors truncate">${away.team.shortDisplayName || away.team.name}</div>
+                                                <div class="text-sm text-zinc-500 font-mono mt-0.5">${awayRecord || '0-0'}</div>
+                                            </div>
+                                        </div>
+                                        <span class="text-5xl sm:text-6xl font-black text-white font-mono ml-4 tracking-tighter">${away.score || '0'}</span>
+                                    </div>
+
+                                    <div class="hidden md:flex text-zinc-700 font-black text-2xl italic opacity-40">VS</div>
+
+                                    <div class="flex items-center justify-between bg-zinc-950/50 p-4 sm:p-6 rounded-2xl border border-zinc-800/80">
+                                        <div class="flex items-center gap-4 overflow-hidden">
+                                            <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-zinc-900 flex items-center justify-center p-2.5 border border-zinc-700/50 shrink-0 shadow-inner">
+                                                <img src="${home.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                                            </div>
+                                            <div class="truncate">
+                                                <div class="font-bold text-xl sm:text-2xl text-zinc-100 group-hover:text-cyan-400 transition-colors truncate">${home.team.shortDisplayName || home.team.name}</div>
+                                                <div class="text-sm text-zinc-500 font-mono mt-0.5">${homeRecord || '0-0'}</div>
+                                            </div>
+                                        </div>
+                                        <span class="text-5xl sm:text-6xl font-black text-white font-mono ml-4 tracking-tighter">${home.score || '0'}</span>
+                                    </div>
+                                </div>
+
+                                <div class="border-t border-zinc-800/60 pt-4 mt-6 sm:mt-8 flex justify-between items-center text-xs sm:text-sm font-medium text-zinc-500 relative z-10">
+                                    <div class="flex items-center gap-2 truncate pr-2">
+                                        <span class="text-zinc-600">📍</span>
+                                        <span class="truncate" title="${venueFullString}">${venueFullString}</span>
+                                    </div>
+                                    <span class="text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity font-bold shrink-0 tracking-widest uppercase">Open Box Score & Stats →</span>
+                                </div>
+                                
+                                <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-indigo-500/5 pointer-events-none"></div>
+                            </div>
+                        `;
+                    } else {
+                        standardHTML += `
+                            <div onclick="openGamecast('${game.id}')" class="p-5 rounded-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between group relative overflow-hidden backdrop-blur-sm border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-700 shadow-lg shadow-black/40 hover:shadow-cyan-900/10">
+                                <div>
+                                    <div class="flex justify-between items-center mb-4">
+                                        <span class="text-[10px] tracking-widest uppercase font-black px-3 py-1 rounded-full border ${statusBadgeColor}">${statusDesc}</span>
+                                        <span class="text-xs text-zinc-400 font-medium tracking-wide">${dateTimeDisplay}</span>
+                                    </div>
+
+                                    <div class="space-y-4 my-3">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center space-x-3 overflow-hidden pr-2">
+                                                <div class="w-8 h-8 rounded-full bg-zinc-950/50 flex items-center justify-center p-1 border border-zinc-800/50 shrink-0 shadow-inner">
+                                                    <img src="${away.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                                                </div>
+                                                <div class="truncate">
+                                                    <span class="font-bold text-[15px] group-hover:text-cyan-400 transition-colors text-zinc-100">${away.team.shortDisplayName || away.team.name}</span>
+                                                    ${awayRecordBadge}
+                                                </div>
+                                            </div>
+                                            <span class="text-2xl font-black shrink-0 ml-2 text-white font-mono">${away.score || '0'}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center space-x-3 overflow-hidden pr-2">
+                                                <div class="w-8 h-8 rounded-full bg-zinc-950/50 flex items-center justify-center p-1 border border-zinc-800/50 shrink-0 shadow-inner">
+                                                    <img src="${home.team.logo || ''}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                                                </div>
+                                                <div class="truncate">
+                                                    <span class="font-bold text-[15px] group-hover:text-cyan-400 transition-colors text-zinc-100">${home.team.shortDisplayName || home.team.name}</span>
+                                                    ${homeRecordBadge}
+                                                </div>
+                                            </div>
+                                            <span class="text-2xl font-black shrink-0 ml-2 text-white font-mono">${home.score || '0'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="border-t border-zinc-800/60 pt-4 mt-4 flex justify-between items-center text-[11px] font-medium text-zinc-500">
+                                    <div class="flex items-center gap-1.5 truncate pr-2">
+                                        <span class="text-zinc-600">📍</span>
+                                        <span class="truncate" title="${venueFullString}">${venueFullString}</span>
+                                    </div>
+                                    <span class="text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity font-bold shrink-0 tracking-wider">STATS →</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            if (cachedEvents.length === 0 && !heroHTML) {
+                container.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center py-16 bg-zinc-900/30 rounded-2xl border border-zinc-800/30">
+                        <span class="text-3xl mb-3 opacity-50">🏈</span>
+                        <p class="text-zinc-500 font-medium">No games scheduled for this timeframe.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = heroHTML + standardHTML;
+        }
+
+        async function openGamecast(gameId) {
+            const modal = document.getElementById('gamecast-modal');
+            const content = document.getElementById('modal-content');
+            const title = document.getElementById('modal-header-title');
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            content.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-cyan-500/70 animate-pulse">
+                    <svg class="w-10 h-10 animate-spin mb-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="font-medium tracking-widest text-xs uppercase">Loading Game Data...</p>
+                </div>`;
+            
+            try {
+                let data;
+                try {
+                    data = await fetchSafe(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${gameId}`);
+                } catch (apiErr) {
+                    const cachedGame = cachedEvents.find(g => g.id === gameId);
+                    if (!cachedGame) throw new Error("Game data unavailable");
+                    
+                    data = {
+                        header: { competitions: cachedGame.competitions },
+                        scoringPlays: [],
+                        leaders: [],
+                        boxscore: { teams: [], players: [] },
+                        predictor: null
+                    };
+                }
+
+                globalBoxscoreData = data;
+                
+                const competition = data.header?.competitions?.[0];
+                if (!competition) throw new Error("Invalid competition data structure");
+
+                // Update modal header bar title to match teams
+                const competitors = competition.competitors || [];
+                const home = competitors.find(t => t.homeAway === 'home') || {};
+                const away = competitors.find(t => t.homeAway === 'away') || {};
+                const awayAbbr = away.team?.abbreviation || away.team?.shortDisplayName || 'AWAY';
+                const homeAbbr = home.team?.abbreviation || home.team?.shortDisplayName || 'HOME';
+                title.textContent = `${awayAbbr} @ ${homeAbbr}`;
+
+                renderGameModalContent(0);
+            } catch (err) {
+                console.error("Gamecast Load Failed:", err);
+                content.innerHTML = `
+                    <div class="text-center py-12">
+                        <p class="text-red-400 font-bold mb-2">Failed to load game details</p>
+                        <p class="text-zinc-500 text-sm">Please close and try again later.</p>
+                    </div>`;
+            }
+        }
+
+        // Helper function for building elegant Comparison Progress Bars themed to both teams
+        function generateComparisonBar(label, awayVal, homeVal, awayDisplay, homeDisplay, awayColor, homeColor) {
+            let total = awayVal + homeVal;
+            let awayPct = total > 0 ? (awayVal / total) * 100 : 50;
+            let homePct = total > 0 ? (homeVal / total) * 100 : 50;
+
+            return `
+                <div class="mb-4">
+                    <div class="flex justify-between items-end mb-1.5 px-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${awayColor}; box-shadow: 0 0 6px ${awayColor}80;"></span>
+                            <span class="font-mono text-xs font-black tracking-wide text-zinc-100">${awayDisplay}</span>
+                        </div>
+                        <span class="text-zinc-500 text-[10px] uppercase tracking-widest font-black">${label}</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-mono text-xs font-black tracking-wide text-zinc-100">${homeDisplay}</span>
+                            <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${homeColor}; box-shadow: 0 0 6px ${homeColor}80;"></span>
+                        </div>
+                    </div>
+                    <div class="flex h-3 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800/80 p-0.5 shadow-inner">
+                        <div class="h-full rounded-l-full transition-all duration-500" style="width: ${awayPct}%; background-color: ${awayColor}; box-shadow: 0 0 10px ${awayColor}40;"></div>
+                        <div class="w-1 bg-zinc-950 shrink-0"></div>
+                        <div class="h-full rounded-r-full transition-all duration-500" style="width: ${homePct}%; background-color: ${homeColor}; box-shadow: 0 0 10px ${homeColor}40;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGameModalContent(selectedTeamIndex) {
+            const content = document.getElementById('modal-content');
+            const data = globalBoxscoreData;
+            if (!data) return;
+
+            const competition = data.header?.competitions?.[0];
+            if (!competition) return;
+
+            const competitors = competition.competitors || [];
+            const home = competitors.find(t => t.homeAway === 'home') || {};
+            const away = competitors.find(t => t.homeAway === 'away') || {};
+            
+            const statusState = competition.status?.type?.state || 'pre';
+            const statusDesc = competition.status?.type?.description || 'TBD';
+
+            const awayLogo = away.team?.logos?.[0]?.href || away.team?.logo || '';
+            const homeLogo = home.team?.logos?.[0]?.href || home.team?.logo || '';
+            
+            const awayLocation = away.team?.location || away.team?.abbreviation || '';
+            const awayNameOnly = away.team?.name || away.team?.shortDisplayName || 'AWAY';
+            const homeLocation = home.team?.location || home.team?.abbreviation || '';
+            const homeNameOnly = home.team?.name || home.team?.shortDisplayName || 'HOME';
+            
+            const awayAbbr = away.team?.abbreviation || away.team?.shortDisplayName || 'AWAY';
+            const homeAbbr = home.team?.abbreviation || home.team?.shortDisplayName || 'HOME';
+            
+            const awayScore = away.score || '0';
+            const homeScore = home.score || '0';
+            
+            const awayRecord = away.record?.[0]?.summary || away.records?.[0]?.summary || '0-0';
+            const homeRecord = home.record?.[0]?.summary || home.records?.[0]?.summary || '0-0';
+
+            const { awayColor, homeColor } = resolveMatchupColors(away.team, home.team);
+
+            let statusBadgeColor = 'text-zinc-400 bg-zinc-900 border-zinc-800 shadow-inner shadow-black/50';
+            if (statusState === 'in') statusBadgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse';
+            if (statusState === 'pre') statusBadgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.1)]';
+
+            // REDESIGNED HEADER: High Detail Matchup Panel
+            let html = `
+                <div class="relative w-full bg-zinc-950 p-6 sm:p-8 rounded-2xl border border-zinc-800 shadow-inner overflow-hidden mb-8 flex flex-col">
+                    
+                    <div class="absolute inset-0 flex pointer-events-none opacity-20">
+                        <div class="w-1/2 h-full" style="background: linear-gradient(to right, ${awayColor}, transparent);"></div>
+                        <div class="w-1/2 h-full" style="background: linear-gradient(to left, ${homeColor}, transparent);"></div>
+                    </div>
+
+                    <div class="relative z-10 flex justify-between items-center w-full">
+                        <div class="flex flex-col items-center w-[30%]">
+                            <div class="w-16 h-16 sm:w-24 sm:h-24 bg-zinc-900 rounded-full p-2.5 sm:p-4 border shadow-lg mb-3" style="border-color: ${awayColor}; box-shadow: 0 0 20px ${awayColor}40;">
+                                <img src="${awayLogo}" class="w-full h-full object-contain drop-shadow-md" onerror="this.style.display='none'">
+                            </div>
+                            <div class="text-[9px] sm:text-[11px] text-zinc-400 font-bold uppercase tracking-[0.2em] mb-0.5 text-center leading-tight truncate w-full">${awayLocation}</div>
+                            <div class="text-sm sm:text-xl font-black text-white uppercase tracking-wider text-center leading-tight truncate w-full">${awayNameOnly}</div>
+                            <div class="text-[10px] sm:text-xs text-zinc-500 font-mono mt-2 bg-zinc-900/80 px-2 py-0.5 rounded border border-zinc-800">${awayRecord}</div>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center w-[40%] space-y-3">
+                            <div class="text-[9px] sm:text-[11px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border ${statusBadgeColor}">${statusDesc}</div>
+                            <div class="flex items-center justify-center gap-3 sm:gap-6 w-full">
+                                <span class="text-5xl sm:text-7xl font-black text-white font-mono tracking-tighter drop-shadow-lg">${awayScore}</span>
+                                <span class="text-zinc-700 font-black text-2xl sm:text-4xl italic opacity-40">-</span>
+                                <span class="text-5xl sm:text-7xl font-black text-white font-mono tracking-tighter drop-shadow-lg">${homeScore}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center w-[30%]">
+                            <div class="w-16 h-16 sm:w-24 sm:h-24 bg-zinc-900 rounded-full p-2.5 sm:p-4 border shadow-lg mb-3" style="border-color: ${homeColor}; box-shadow: 0 0 20px ${homeColor}40;">
+                                <img src="${homeLogo}" class="w-full h-full object-contain drop-shadow-md" onerror="this.style.display='none'">
+                            </div>
+                            <div class="text-[9px] sm:text-[11px] text-zinc-400 font-bold uppercase tracking-[0.2em] mb-0.5 text-center leading-tight truncate w-full">${homeLocation}</div>
+                            <div class="text-sm sm:text-xl font-black text-white uppercase tracking-wider text-center leading-tight truncate w-full">${homeNameOnly}</div>
+                            <div class="text-[10px] sm:text-xs text-zinc-500 font-mono mt-2 bg-zinc-900/80 px-2 py-0.5 rounded border border-zinc-800">${homeRecord}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // CONDITIONAL RENDER: PRE-GAME (Team Comparison) VS LIVE/POST GAME
+            if (statusState === 'pre') {
+                
+                // TEAM STATS COMPARISON THEMED TO BOTH TEAMS
+                html += `
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-black uppercase tracking-widest bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-transparent flex items-center gap-2">
+                                📊 Team Matchup Comparison
+                            </h4>
+                            <div class="flex items-center gap-2 text-[10px] font-black tracking-wider">
+                                <span class="px-2 py-0.5 rounded border border-zinc-800 bg-zinc-950 font-mono" style="color: ${awayColor}; border-color: ${awayColor}40;">${awayAbbr}</span>
+                                <span class="text-zinc-600">VS</span>
+                                <span class="px-2 py-0.5 rounded border border-zinc-800 bg-zinc-950 font-mono" style="color: ${homeColor}; border-color: ${homeColor}40;">${homeAbbr}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-900/60 border border-zinc-800 p-4 sm:p-6 rounded-2xl space-y-4 relative overflow-hidden backdrop-blur-sm">
+                            
+                            <div class="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-10 blur-2xl pointer-events-none" style="background-color: ${awayColor};"></div>
+                            <div class="absolute -bottom-12 -right-12 w-32 h-32 rounded-full opacity-10 blur-2xl pointer-events-none" style="background-color: ${homeColor};"></div>
+                `;
+
+                let hasComparisonData = false;
+
+                let homeWinProb = data.predictor?.homeTeam?.gameProjection;
+                let awayWinProb = data.predictor?.awayTeam?.gameProjection;
+                
+                if (homeWinProb) {
+                    hasComparisonData = true;
+                    let hp = parseFloat(homeWinProb);
+                    let ap = awayWinProb ? parseFloat(awayWinProb) : 100 - hp;
+                    html += generateComparisonBar('Win Probability', ap, hp, ap.toFixed(1) + '%', hp.toFixed(1) + '%', awayColor, homeColor);
+                }
+
+                let awayTeamStats = data.boxscore?.teams?.find(t => t.team?.id === away.team?.id)?.statistics || [];
+                let homeTeamStats = data.boxscore?.teams?.find(t => t.team?.id === home.team?.id)?.statistics || [];
+
+                if (awayTeamStats.length > 0 && homeTeamStats.length > 0) {
+                    let statCount = 0;
+                    for (let i = 0; i < awayTeamStats.length; i++) {
+                        if (statCount >= 6) break; // Display top 6 stats
+                        let aStat = awayTeamStats[i];
+                        let hStat = homeTeamStats.find(s => s.name === aStat.name);
+                        
+                        if (hStat && aStat.displayValue && hStat.displayValue) {
+                            let aVal = parseFloat(aStat.displayValue.replace(/,/g, ''));
+                            let hVal = parseFloat(hStat.displayValue.replace(/,/g, ''));
+                            
+                            if (!isNaN(aVal) && !isNaN(hVal)) {
+                                hasComparisonData = true;
+                                html += generateComparisonBar(aStat.label || aStat.name, aVal, hVal, aStat.displayValue, hStat.displayValue, awayColor, homeColor);
+                                statCount++;
+                            }
+                        }
+                    }
+                }
+
+                if (!hasComparisonData) {
+                    html += `<div class="text-center text-xs font-medium text-zinc-600 py-6 uppercase tracking-widest relative z-10">Seasonal comparison data unavailable prior to kickoff</div>`;
+                }
+
+                html += `</div></div>`;
+
+            } else {
+                
+                // LIVE & POST GAME LOGIC
+                // 1. Scoring Summary
+                html += `<div class="space-y-4">
+                    <h4 class="text-xs font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Scoring Summary
+                    </h4>`;
+                    
+                if (data.scoringPlays && data.scoringPlays.length > 0) {
+                    html += `<div class="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">`;
+                    data.scoringPlays.forEach(play => {
+                        html += `
+                            <div class="bg-zinc-900/80 border border-zinc-800/80 text-sm p-3 sm:p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-zinc-800 transition-colors">
+                                <div class="flex items-start sm:items-center gap-3">
+                                    <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-1 rounded text-[10px] font-black tracking-widest whitespace-nowrap mt-0.5 sm:mt-0 shadow-inner">${play.clock?.displayValue || ''} Q${play.period?.number || ''}</span>
+                                    <span class="text-zinc-300 text-xs sm:text-sm leading-relaxed">${play.text}</span>
+                                </div>
+                                <span class="font-mono font-black text-cyan-400 shrink-0 text-lg bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">${play.awayScore || '0'} - ${play.homeScore || '0'}</span>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `<div class="bg-zinc-900/50 border border-dashed border-zinc-800 text-center text-xs font-medium text-zinc-600 py-8 rounded-xl tracking-wide uppercase">No scoring plays yet</div>`;
+                }
+                html += `</div>`;
+
+
+                // 2. Detailed Player Stats
+                html += `<div class="space-y-4 pt-4">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <h4 class="text-xs font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Detailed Player Stats
+                        </h4>`;
+
+                if (data.boxscore?.players && data.boxscore.players.length > 0) {
+                    html += `<div class="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800 w-full sm:w-auto">`;
+                    data.boxscore.players.forEach((teamStats, idx) => {
+                        const isActive = idx === selectedTeamIndex;
+                        const btnClass = isActive 
+                            ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 shadow-inner shadow-cyan-900/20' 
+                            : 'text-zinc-500 hover:text-zinc-300 font-semibold border border-transparent';
+                        html += `<button onclick="renderGameModalContent(${idx})" class="flex-1 sm:flex-none px-4 py-2 text-xs rounded-md transition-all cursor-pointer uppercase tracking-wider ${btnClass}">${teamStats.team?.abbreviation || teamStats.team?.name || 'TEAM'}</button>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+
+                if (data.boxscore?.players && data.boxscore.players.length > 0) {
+                    const teamStats = data.boxscore.players[selectedTeamIndex];
+                    html += `<div class="bg-zinc-900/50 border border-zinc-800 p-3 sm:p-5 rounded-2xl space-y-6 max-h-[400px] overflow-y-auto custom-scrollbar">`;
+                    
+                    teamStats.statistics?.forEach(statGroup => {
+                        if (!statGroup.athletes || statGroup.athletes.length === 0) return;
+
+                        html += `<div class="space-y-3">`;
+                        html += `<div class="text-[11px] font-black text-white uppercase tracking-widest bg-zinc-800/80 px-3 py-2 rounded-lg border border-zinc-700/50 inline-block">
+                                    ${statGroup.label || statGroup.name || 'Stats'}
+                                 </div>`;
+                        
+                        html += `<div class="overflow-x-auto pb-2 custom-scrollbar">
+                                    <table class="w-full text-left text-xs whitespace-nowrap min-w-[300px]">
+                                        <thead>
+                                            <tr class="text-zinc-500 border-b border-zinc-800/80">
+                                                <th class="py-2.5 pl-3 font-bold uppercase tracking-wider text-left sticky left-0 bg-zinc-900/95 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)]">Athlete</th>`;
+                        
+                        if (statGroup.labels && statGroup.labels.length > 0) {
+                            statGroup.labels.forEach(lbl => {
+                                html += `<th class="py-2.5 px-3 font-black uppercase tracking-widest text-right text-[10px] text-zinc-600">${lbl}</th>`;
+                            });
+                        }
+
+                        html += `           </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-zinc-800/40">`;
+                        
+                        statGroup.athletes?.forEach(athlete => {
+                            html += `
+                                        <tr class="hover:bg-zinc-800/40 transition-colors group">
+                                            <td class="py-2.5 pl-3 font-semibold text-zinc-200 sticky left-0 bg-zinc-900/95 group-hover:bg-zinc-800/95 z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.5)]">
+                                                ${athlete.athlete?.displayName || 'Unknown Player'}
+                                            </td>`;
+                            
+                            if (athlete.stats && athlete.stats.length > 0) {
+                                athlete.stats.forEach(s => {
+                                    html += `<td class="py-2.5 px-3 text-right font-mono text-cyan-400 font-bold tracking-wide">${s}</td>`;
+                                });
+                            }
+                            
+                            html += `   </tr>`;
+                        });
+                        
+                        html += `       </tbody>
+                                    </table>
+                                </div>
+                            </div>`;
+                    });
+
+                    html += `</div>`;
+                } else {
+                    html += `<div class="bg-zinc-900/50 border border-dashed border-zinc-800 text-center text-xs font-medium text-zinc-600 py-8 rounded-xl tracking-wide uppercase">Stats unavailable</div>`;
+                }
+                html += `</div>`;
+            }
+
+            content.innerHTML = html;
+        }
+
+        function closeGamecast() {
+            document.getElementById('gamecast-modal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Initialize Load & Start Polling
+        loadCalendarAndScores();
+        setInterval(() => {
+            if (!isInitialLoad && currentPage === 'scores') {
+                fetchScoresForSelected();
+            }
+        }, 20000);
+    </script>
+</body>
+</html>
